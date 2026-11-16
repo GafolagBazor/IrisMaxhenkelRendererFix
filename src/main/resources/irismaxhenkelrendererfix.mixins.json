@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "ru.gafolagbazor.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "MixinIrisPipelines",
+    "MixinBufferBuilderFix"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

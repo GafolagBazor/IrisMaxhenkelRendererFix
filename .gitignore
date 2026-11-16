@@ -1,0 +1,13 @@
+.gradle/
+build/
+run/
+libs/
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+*.keystore
+*.jks
+.DS_Store
+Thumbs.db

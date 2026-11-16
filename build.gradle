@@ -1,0 +1,214 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.guardsquare:proguard-gradle:7.9.1'
+    }
+}
+
+
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'idea'
+    id 'net.neoforged.moddev' version '2.0.148'
+}
+
+version = mod_version
+group = mod_group_id
+
+repositories {
+    mavenLocal()
+}
+
+base {
+    archivesName = mod_id
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+
+neoForge {
+    version = project.neo_version
+
+    runs {
+        client {
+            client()
+            devLogin = true
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'neoforge.disableBlaze3DValidation', 'true'
+            systemProperty 'sodium.checks.issue2561', 'false'
+        }
+
+        server {
+            server()
+            programArgument '--nogui'
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        gameTestServer {
+            type = "gameTestServer"
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        data {
+            clientData()
+
+            programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+        }
+
+        configureEach {
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+
+            logLevel = org.slf4j.event.Level.DEBUG
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+}
+
+
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
+    var replaceProperties = [minecraft_version      : minecraft_version,
+                             minecraft_version_range: minecraft_version_range,
+                             neo_version            : neo_version,
+                             neo_version_range      : neo_version_range,
+                             loader_version_range   : loader_version_range,
+                             mod_id                 : mod_id,
+                             mod_name               : mod_name,
+                             mod_license            : mod_license,
+                             mod_version            : mod_version,
+                             mod_authors            : mod_authors,
+                             mod_description        : mod_description]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from "src/main/templates"
+    into "build/generated/sources/modMetadata"
+}
+
+
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url "file://${project.projectDir}/repo"
+        }
+    }
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version            : neo_version,
+            neo_version_range      : neo_version_range,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+            mod_authors            : mod_authors,
+            mod_description        : mod_description
+    ]
+    inputs.properties replaceProperties
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand replaceProperties
+    }
+}
+
+def jarTaskProvider = tasks.named('jar')
+def keyStorePath = providers.gradleProperty('keyStore').orNull
+def keyStorePass = providers.gradleProperty('keyStorePass').orNull
+def keyStoreKeyPass = providers.gradleProperty('keyStoreKeyPass').orNull
+
+tasks.register('proguardJar', proguard.gradle.ProGuardTask) {
+    dependsOn jarTaskProvider
+    outputs.upToDateWhen { false }
+
+    def inputJar = jarTaskProvider.flatMap { it.archiveFile }
+    def obfuscatedJar = layout.buildDirectory.file("tmp/proguard/obfuscated.jar")
+
+    injars inputJar
+    outjars obfuscatedJar
+
+    libraryjars "${System.getProperty('java.home')}/jmods/java.base.jmod", jarfilter: '!**.jar', filter: '!module-info.class'
+    libraryjars configurations.compileClasspath
+
+    repackageclasses ''
+    allowaccessmodification
+    optimizations '!method/inlining/*'
+
+    keep([allowobfuscation: true], 'public class ru.gafolagbazor.SignatureGuard { public static void check(java.lang.Class); }')
+    keep([allowobfuscation: true], 'public class ru.gafolagbazor.RealMixin { public static void resolvePipeline(java.lang.Object, java.lang.Object, java.lang.Object); }')
+    keep 'public class ru.gafolagbazor.IrisFix { public <init>(); }'
+    keep 'public class ru.gafolagbazor.mixin.** { *; }'
+    keep '@net.neoforged.fml.common.Mod public class * { public <init>(...); }'
+    keep 'public class ru.gafolagbazor.IrisFix { *; }'
+    keepattributes 'RuntimeVisibleAnnotations,RuntimeInvisibleAnnotations,RuntimeVisibleParameterAnnotations,Signature,InnerClasses,EnclosingMethod'
+    keepattributes 'RuntimeVisibleAnnotations,RuntimeInvisibleAnnotations,Signature,InnerClasses,EnclosingMethod'
+
+    renamesourcefileattribute 'SourceFile'
+    dontwarn '**'
+
+    doLast {
+        java.nio.file.Files.copy(
+                obfuscatedJar.get().asFile.toPath(),
+                inputJar.get().asFile.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING
+        )
+    }
+}
+
+tasks.register('signJar') {
+    dependsOn tasks.named('proguardJar')
+    outputs.upToDateWhen { false }
+    def jarFileProvider = jarTaskProvider.flatMap { it.archiveFile }
+    inputs.file(jarFileProvider)
+
+    doLast {
+        if (keyStorePath != null && keyStorePass != null && keyStoreKeyPass != null) {
+            def jarFile = jarFileProvider.get().asFile
+            def aliases = ['sig1', 'sig2', 'sig3', 'sig4']
+            aliases.eachWithIndex { aliasName, index ->
+                ant.signjar(
+                        jar: jarFile,
+                        alias: aliasName,
+                        sigfile: "GAFOLAG${index + 1}",
+                        keystore: keyStorePath,
+                        storepass: keyStorePass,
+                        keypass: keyStoreKeyPass
+                )
+            }
+            logger.lifecycle("Obfuscated & Signed JAR with ${aliases.size()} signatures: ${jarFile.name}")
+        }
+    }
+}
+
+tasks.named('build') {
+    dependsOn tasks.named('signJar')
+}
