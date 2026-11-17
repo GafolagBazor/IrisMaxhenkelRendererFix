@@ -12,20 +12,17 @@ A lightweight client-side fix for **Minecraft 26.3 (NeoForge)** that resolves se
 
 | Before (Iris 1.11.7 without fix) | After (With IrisMaxhenkelRendererFix) |
 | :---: | :---: |
-| <img width="1920" height="1080" alt="Minecraft Screenshot 2026 11 16 - 22 02 30 28" src="https://github.com/user-attachments/assets/646236c0-5f53-46d2-a895-f2a45c7acb4d" /> | <img width="1920" height="1080" alt="Minecraft Screenshot 2026 11 16 - 22 03 53 80" src="https://github.com/user-attachments/assets/3024e532-a5a1-491b-bf8d-c5bdcfdd64ef" /> |
+| <img width="1920" height="1080" alt="B" src="https://github.com/user-attachments/assets/646236c0-5f53-46d2-a895-f2a45c7acb4d" /> | <img width="1670" height="840" alt="A" src="https://github.com/user-attachments/assets/3024e532-a5a1-491b-bf8d-c5bdcfdd64ef" /> |
 
 ### Test Environment
 
 | Component | Version / Details |
 | :--- | :--- |
-| **Minecraft** | `26.3` |
-| **Mod Loader** | `NeoForge 26.3.0.76` |
-| **Iris Shaders** | `1.11.7+mc26.3` |
 | **Sodium** | `0.9.3-beta.1+mc26.3` |
 | **Tested Mod** | `Ultimate Car Mod 1.0.51+26.3` |
 | **Shaderpack** | `Rethinking Voxels r0.1-beta9` |
 | **GPU** | `NVIDIA GeForce RTX 5060 Ti Infinity 3` |
-| **Mod Version** | `1.0.0_61518_1.11.7+mc26.3` |
+| **Mod version** | `1.0.0_61518_1.11.7+mc26.3` |
 
 ---
 
